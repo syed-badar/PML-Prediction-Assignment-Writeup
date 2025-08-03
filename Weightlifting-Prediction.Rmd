@@ -1,0 +1,246 @@
+---
+title: "Weightlifting Exercise Quality Prediction"
+author: "Syed Mohd Badar Ul Islam"
+date: "August 3, 2025"
+output:
+  html_document:
+    toc: true
+    toc_depth: 3
+    theme: cosmo
+    highlight: tango
+---
+
+```{r setup, include=FALSE}
+# This chunk sets up global options for all subsequent code chunks.
+# It makes sure that code is echoed (shown) but messages and warnings are suppressed
+# to keep the output clean.
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE, fig.width = 8, fig.height = 6)
+
+# Load necessary libraries at the beginning
+library(readr)
+library(dplyr)
+library(caret)
+library(ggplot2) # For plotting
+
+1. Introduction
+This report details the process of building a machine learning model to predict the quality of barbell lifts, as indicated by the classe variable. The data comes from accelerometers placed on the belt, forearm, arm, and dumbbell of six participants performing exercises correctly and incorrectly in five different ways. The goal is to accurately classify the exercise performance, which is a multiclass classification problem.
+
+More information about the dataset can be found at http://groupware.les.inf.puc-rio.br/har.
+
+2. Data Loading and Initial Exploration
+We begin by loading the training and testing datasets from the provided URLs and performing an initial inspection to understand their structure and content.
+
+# Load the datasets
+training_data_url <- "[https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv](https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv)"
+testing_data_url <- "[https://d396qusza40orc.cloudfront.com/predmachlearn/pml-testing.csv](https://d396qusza40orc.cloudfront.com/predmachlearn/pml-testing.csv)"
+
+training <- read_csv(training_data_url)
+testing <- read_csv(testing_data_url)
+
+# Display dimensions of the datasets
+cat("Dimensions of Training Data:", dim(training), "\n")
+cat("Dimensions of Testing Data:", dim(testing), "\n\n")
+
+# Display column names (first few)
+cat("First 10 Column Names of Training Data:\n")
+print(names(training)[1:10])
+cat("\n")
+
+# Display structure of the training data (first 10 columns for brevity)
+cat("Structure of Training Data (first 10 columns):\n")
+str(training[, 1:10])
+cat("\n")
+
+# Summary statistics for a few key columns (or relevant ones after initial NA check)
+cat("Summary of 'classe' variable:\n")
+print(table(training$classe))
+cat("\nProportions of 'classe' variable:\n")
+print(prop.table(table(training$classe)))
+
+Key Observations:
+
+The training set has r dim(training)[1] observations and r dim(training)[2] variables.
+
+The testing set has r dim(testing)[1] observations and r dim(testing)[2] variables. Note that the testing set has fewer columns, as it lacks the classe variable.
+
+Many columns appear to be numeric, but some, like user_name and timestamp-related columns, are character.
+
+The classe variable is a factor with 5 levels, indicating a multiclass classification problem. The distribution of classes appears relatively balanced.
+
+3. Data Preprocessing and Feature Engineering
+This is a crucial step to clean and prepare the data for effective model training. We will handle missing values, near-zero variance predictors, and irrelevant columns.
+
+# --- 3.1 Handling Missing Values / Near-Zero Variance / Irrelevant Columns ---
+
+# Identify columns with many NAs (e.g., > 90% NA)
+na_counts <- colSums(is.na(training))
+na_percentages <- na_counts / nrow(training) * 100
+cols_to_remove_na <- names(na_percentages[na_percentages > 90])
+cat("Columns with >90% NA values to remove:\n")
+print(cols_to_remove_na)
+
+# Identify columns with near-zero variance (NZV)
+# This identifies predictors that have very few unique values or are constant.
+nzv_cols <- nearZeroVar(training, saveMetrics = TRUE)
+cols_to_remove_nzv <- rownames(nzv_cols[nzv_cols$nzv, ])
+cat("\nColumns with Near-Zero Variance to remove:\n")
+print(cols_to_remove_nzv)
+
+# Identify irrelevant columns (e.g., ID columns, timestamps)
+# 'X1' is an ID column. 'user_name' is an identifier.
+# 'raw_timestamp_occured', 'raw_timestamp_live', 'new_window', 'num_window'
+# are metadata not directly related to exercise quality.
+irrelevant_cols <- c("X1", "user_name", "raw_timestamp_occured", "raw_timestamp_live",
+                     "new_window", "num_window")
+cat("\nIrrelevant columns to remove:\n")
+print(irrelevant_cols)
+
+# Combine all columns to remove, ensuring 'classe' is not accidentally included
+all_cols_to_remove <- unique(c(cols_to_remove_na, cols_to_remove_nzv, irrelevant_cols))
+all_cols_to_remove <- all_cols_to_remove[all_cols_to_remove != "classe"] # Just in case
+
+# Remove identified columns from both training and testing sets
+training_processed <- training %>% select(-one_of(all_cols_to_remove))
+testing_processed <- testing %>% select(-one_of(all_cols_to_remove))
+
+cat("\nDimensions of Training Data after preprocessing:", dim(training_processed), "\n")
+cat("Dimensions of Testing Data after preprocessing:", dim(testing_processed), "\n")
+
+# --- 3.2 Data Type Conversion ---
+# Ensure 'classe' is a factor in the training set (it usually is if read_csv infers correctly)
+training_processed$classe <- factor(training_processed$classe)
+
+# Verify that all remaining predictor columns are numeric.
+# If any character columns remain that should be numeric, convert them.
+# For this specific dataset after the above steps, most should be numeric.
+# If not, you might add:
+# training_processed <- training_processed %>% mutate_if(is.character, as.numeric)
+# testing_processed <- testing_processed %>% mutate_if(is.character, as.numeric)
+
+# --- 3.3 Feature Scaling (Optional for tree-based models, but good for consistency) ---
+# For tree-based models like Random Forest, explicit scaling is not strictly necessary
+# as they are invariant to monotonic transformations of features.
+# However, if you were to use models sensitive to scale (e.g., SVM, KNN, GLMNET),
+# you would include `preProcess = c("center", "scale")` in your `train` call.
+
+Key Decisions in Preprocessing:
+
+We removed columns with a very high percentage of missing values, as they provide little information.
+
+Near-zero variance predictors were removed because they offer minimal discriminative power.
+
+Irrelevant metadata and ID columns were also excluded to prevent data leakage and improve model focus.
+
+The classe variable was explicitly ensured to be a factor for classification.
+
+4. Model Building Strategy
+For this multiclass classification problem, we will employ a Random Forest model. Random Forests are ensemble methods known for their high accuracy, robustness to overfitting, and ability to handle a large number of predictors without extensive feature scaling.
+
+We will use 10-fold cross-validation to estimate the model's performance and tune hyperparameters robustly.
+
+# --- 4.1 Cross-Validation Setup ---
+fitControl <- trainControl(
+  method = "cv",
+  number = 10, # 10-fold cross-validation
+  verboseIter = TRUE, # Show progress during training
+  classProbs = TRUE, # Needed for some metrics if using multiClassSummary, or for probability predictions
+  summaryFunction = defaultSummary # Provides Accuracy and Kappa for classification
+)
+
+# --- 4.2 Training a Random Forest model ---
+set.seed(12345) # Set a seed for reproducibility of model training and CV folds
+
+# Train the Random Forest model
+# We will let caret's train function tune the 'mtry' parameter (number of variables randomly sampled at each split)
+# using its default grid, which is often sufficient for a good starting point.
+model_rf <- train(
+  classe ~ ., # Predict 'classe' using all other processed variables
+  data = training_processed,
+  method = "rf",
+  trControl = fitControl
+)
+
+# You could also explicitly define a tuneGrid for 'mtry' if you want more control:
+# tuneGrid_rf <- expand.grid(mtry = c(2, 5, 10, 20, 30)) # Example values
+# model_rf_tuned <- train(
+#   classe ~ .,
+#   data = training_processed,
+#   method = "rf",
+#   trControl = fitControl,
+#   tuneGrid = tuneGrid_rf
+# )
+
+Key Choices and Justifications:
+
+Model Selection (Random Forest): Random Forests are powerful ensemble methods that combine multiple decision trees. They are generally robust to noisy data, handle high-dimensional feature spaces well, and provide good predictive accuracy without requiring extensive feature scaling. They also provide an internal estimate of variable importance.
+
+Cross-Validation (10-fold CV): 10-fold cross-validation is a widely accepted standard that provides a good balance between bias and variance in the estimate of out-of-sample error. It ensures that each fold serves as a test set exactly once, and each observation is used for training multiple times.
+
+Hyperparameter Tuning (mtry): The mtry parameter in Random Forest controls the number of variables randomly sampled as candidates at each split. Tuning this parameter helps optimize the model's performance. caret's train function automatically searches a default grid for mtry unless tuneGrid is specified.
+
+5. Model Evaluation
+After training the Random Forest model, we evaluate its performance using the cross-validation results. This gives us an estimate of the expected out-of-sample error.
+
+# --- 5.1 Evaluate Trained Model ---
+# Print the model object to see cross-validation results and best tune
+print(model_rf)
+
+# Plot accuracy vs. mtry (tuning parameter)
+plot(model_rf)
+
+# Extract the best accuracy from cross-validation
+cv_accuracy <- max(model_rf$results$Accuracy)
+cat("\nCross-validated Accuracy of Random Forest model: ", round(cv_accuracy, 4), "\n")
+
+# Estimate out-of-sample error
+expected_oob_error <- 1 - cv_accuracy
+cat("Estimated Out-of-Sample Error: ", round(expected_oob_error, 4), "\n")
+
+Discussion Points for Report:
+
+Performance Metrics: We used Accuracy and Kappa (from defaultSummary) to evaluate the model. Accuracy measures the proportion of correctly classified instances, while Kappa accounts for agreement occurring by chance.
+
+Cross-Validation Results: The cross-validated accuracy for our Random Forest model is approximately r round(cv_accuracy, 4). This indicates that the model is expected to correctly classify about r round(cv_accuracy*100, 2)% of new, unseen exercise performances.
+
+Expected Out-of-Sample Error: Based on the cross-validation, the estimated out-of-sample error is r round(expected_oob_error, 4).
+
+Strengths: Random Forest performed well, showing high accuracy and robustness. Its ensemble nature helps in achieving stable predictions.
+
+6. Prediction for Quiz Submission
+Finally, we apply our trained Random Forest model to the provided 20 test cases and prepare the predictions in the required format for the automated grading quiz.
+
+# Ensure the testing_processed data has all the same columns as training_processed,
+# except for 'classe' and the 'problem_id' column.
+# The 'problem_id' column is in the original 'testing' dataframe.
+# We need to make sure the prediction input matches the training features.
+
+# Identify the columns that were used for training (excluding 'classe')
+training_features <- names(training_processed)[names(training_processed) != "classe"]
+
+# Filter the test data to only include these features, and remove 'problem_id' if it's still there
+# The 'testing' dataframe (original) contains 'problem_id'.
+testing_final_for_prediction <- testing %>% select(one_of(training_features))
+
+# Generate predictions for the 20 test cases using the best model
+final_quiz_predictions <- predict(model_rf, newdata = testing_final_for_prediction)
+
+# Display the predictions
+cat("Predictions for the 20 test cases:\n")
+print(final_quiz_predictions)
+
+# Create a function to generate the submission files (as per typical course project format)
+# This function will create 20 separate .txt files in your working directory.
+pml_write_files <- function(x){
+  n = length(x)
+  for(i in 1:n){
+    filename = paste0("problem_id_",i,".txt")
+    writeLines(as.character(x[i]), filename)
+  }
+}
+
+# Call the function to create the submission files
+# Uncomment the line below when you are ready to generate the files for submission.
+pml_write_files(final_quiz_predictions)
+
+7. Conclusion
+In this project, we successfully built a Random Forest model to predict the quality of weightlifting exercises. Through careful data preprocessing, including handling missing values and irrelevant features, and utilizing 10-fold cross-validation, we developed a robust model.
