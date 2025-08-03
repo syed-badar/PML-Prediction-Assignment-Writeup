@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="" xml:lang="">
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <meta name="author" content="Syed Mohd Badar Ul Islam" />
+  <meta name="dcterms.date" content="2025-08-03" />
+  <title>Weightlifting Exercise Quality Prediction</title>
+  <style>
+    html {
+      line-height: 1.5;
+      font-family: Georgia, serif;
+      font-size: 20px;
+      color: #1a1a1a;
+      background-color: #fdfdfd;
+    }
+    body {
+      margin: 0 auto;
+      max-width: 36em;
+      padding-left: 50px;
+      padding-right: 50px;
+      padding-top: 50px;
+      padding-bottom: 50px;
+      hyphens: auto;
+      overflow-wrap: break-word;
+      text-rendering: optimizeLegibility;
+      font-kerning: normal;
+    }
+    @media (max-width: 600px) {
+      body {
+        font-size: 0.9em;
+        padding: 1em;
+      }
+      h1 {
+        font-size: 1.8em;
+      }
+    }
+    @media print {
+      body {
+        background-color: transparent;
+        color: black;
+        font-size: 12pt;
+      }
+      p, h2, h3 {
+        orphans: 3;
+        widows: 3;
+      }
+      h2, h3, h4 {
+        page-break-after: avoid;
+      }
+    }
+    p {
+      margin: 1em 0;
+    }
+    a {
+      color: #1a1a1a;
+    }
+    a:visited {
+      color: #1a1a1a;
+    }
+    img {
+      max-width: 100%;
+    }
+    h1, h2, h3, h4, h5, h6 {
+      margin-top: 1.4em;
+    }
+    h5, h6 {
+      font-size: 1em;
+      font-style: italic;
+    }
+    h6 {
+      font-weight: normal;
+    }
+    ol, ul {
+      padding-left: 1.7em;
+      margin-top: 1em;
+    }
+    li > ol, li > ul {
+      margin-top: 0;
+    }
+    blockquote {
+      margin: 1em 0 1em 1.7em;
+      padding-left: 1em;
+      border-left: 2px solid #e6e6e6;
+      color: #606060;
+    }
+    code {
+      font-family: Menlo, Monaco, 'Lucida Console', Consolas, monospace;
+      font-size: 85%;
+      margin: 0;
+    }
+    pre {
+      margin: 1em 0;
+      overflow: auto;
+    }
+    pre code {
+      padding: 0;
+      overflow: visible;
+      overflow-wrap: normal;
+    }
+    .sourceCode {
+     background-color: transparent;
+     overflow: visible;
+    }
+    hr {
+      background-color: #1a1a1a;
+      border: none;
+      height: 1px;
+      margin: 1em 0;
+    }
+    table {
+      margin: 1em 0;
+      border-collapse: collapse;
+      width: 100%;
+      overflow-x: auto;
+      display: block;
+      font-variant-numeric: lining-nums tabular-nums;
+    }
+    table caption {
+      margin-bottom: 0.75em;
+    }
+    tbody {
+      margin-top: 0.5em;
+      border-top: 1px solid #1a1a1a;
+      border-bottom: 1px solid #1a1a1a;
+    }
+    th {
+      border-top: 1px solid #1a1a1a;
+      padding: 0.25em 0.5em 0.25em 0.5em;
+    }
+    td {
+      padding: 0.125em 0.5em 0.25em 0.5em;
+    }
+    header {
+      margin-bottom: 4em;
+      text-align: center;
+    }
+    #TOC li {
+      list-style: none;
+    }
+    #TOC ul {
+      padding-left: 1.3em;
+    }
+    #TOC > ul {
+      padding-left: 0;
+    }
+    #TOC a:not(:hover) {
+      text-decoration: none;
+    }
+    code{white-space: pre-wrap;}
+    span.smallcaps{font-variant: small-caps;}
+    div.columns{display: flex; gap: min(4vw, 1.5em);}
+    div.column{flex: auto; overflow-x: auto;}
+    div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+    ul.task-list{list-style: none;}
+    ul.task-list li input[type="checkbox"] {
+      width: 0.8em;
+      margin: 0 0.8em 0.2em -1.6em;
+      vertical-align: middle;
+    }
+    .display.math{display: block; text-align: center; margin: 0.5rem auto;}
+  </style>
+  <!--[if lt IE 9]>
+    <script src="//cdnjs.cloudflare.com/ajax/libs/html5shiv/3.7.3/html5shiv-printshiv.min.js"></script>
+  <![endif]-->
+</head>
+<body>
+<header id="title-block-header">
+<h1 class="title">Weightlifting Exercise Quality Prediction</h1>
+<p class="author">Syed Mohd Badar Ul Islam</p>
+<p class="date">August 3, 2025</p>
+</header>
+<p>```{r setup, include=FALSE} # This chunk sets up global options for
+all subsequent code chunks. # It makes sure that code is echoed (shown)
+but messages and warnings are suppressed # to keep the output clean.
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE,
+fig.width = 8, fig.height = 6)</p>
+<h1 id="load-necessary-libraries-at-the-beginning">Load necessary
+libraries at the beginning</h1>
+<p>library(readr) library(dplyr) library(caret) library(ggplot2) # For
+plotting</p>
+<ol type="1">
+<li>Introduction This report details the process of building a machine
+learning model to predict the quality of barbell lifts, as indicated by
+the classe variable. The data comes from accelerometers placed on the
+belt, forearm, arm, and dumbbell of six participants performing
+exercises correctly and incorrectly in five different ways. The goal is
+to accurately classify the exercise performance, which is a multiclass
+classification problem.</li>
+</ol>
+<p>More information about the dataset can be found at
+http://groupware.les.inf.puc-rio.br/har.</p>
+<ol start="2" type="1">
+<li>Data Loading and Initial Exploration We begin by loading the
+training and testing datasets from the provided URLs and performing an
+initial inspection to understand their structure and content.</li>
+</ol>
+<h1 id="load-the-datasets">Load the datasets</h1>
+<p>training_data_url &lt;- “<a
+href="https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv">https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv</a>”
+testing_data_url &lt;- “<a
+href="https://d396qusza40orc.cloudfront.com/predmachlearn/pml-testing.csv">https://d396qusza40orc.cloudfront.com/predmachlearn/pml-testing.csv</a>”</p>
+<p>training &lt;- read_csv(training_data_url) testing &lt;-
+read_csv(testing_data_url)</p>
+<h1 id="display-dimensions-of-the-datasets">Display dimensions of the
+datasets</h1>
+<p>cat(“Dimensions of Training Data:”, dim(training), “”)
+cat(“Dimensions of Testing Data:”, dim(testing), “”)</p>
+<h1 id="display-column-names-first-few">Display column names (first
+few)</h1>
+<p>cat(“First 10 Column Names of Training Data:”)
+print(names(training)[1:10]) cat(“”)</p>
+<h1
+id="display-structure-of-the-training-data-first-10-columns-for-brevity">Display
+structure of the training data (first 10 columns for brevity)</h1>
+<p>cat(“Structure of Training Data (first 10 columns):”) str(training[,
+1:10]) cat(“”)</p>
+<h1
+id="summary-statistics-for-a-few-key-columns-or-relevant-ones-after-initial-na-check">Summary
+statistics for a few key columns (or relevant ones after initial NA
+check)</h1>
+<p>cat(“Summary of ‘classe’ variable:”) print(table(training<span
+class="math inline">$classe)) cat("\nProportions of 'classe'
+variable:\n") print(prop.table(table(training$</span>classe)))</p>
+<p>Key Observations:</p>
+<p>The training set has r dim(training)[1] observations and r
+dim(training)[2] variables.</p>
+<p>The testing set has r dim(testing)[1] observations and r
+dim(testing)[2] variables. Note that the testing set has fewer columns,
+as it lacks the classe variable.</p>
+<p>Many columns appear to be numeric, but some, like user_name and
+timestamp-related columns, are character.</p>
+<p>The classe variable is a factor with 5 levels, indicating a
+multiclass classification problem. The distribution of classes appears
+relatively balanced.</p>
+<ol start="3" type="1">
+<li>Data Preprocessing and Feature Engineering This is a crucial step to
+clean and prepare the data for effective model training. We will handle
+missing values, near-zero variance predictors, and irrelevant
+columns.</li>
+</ol>
+<h1 id="handling-missing-values-near-zero-variance-irrelevant-columns">—
+3.1 Handling Missing Values / Near-Zero Variance / Irrelevant Columns
+—</h1>
+<h1 id="identify-columns-with-many-nas-e.g.-90-na">Identify columns with
+many NAs (e.g., &gt; 90% NA)</h1>
+<p>na_counts &lt;- colSums(is.na(training)) na_percentages &lt;-
+na_counts / nrow(training) * 100 cols_to_remove_na &lt;-
+names(na_percentages[na_percentages &gt; 90]) cat(“Columns with &gt;90%
+NA values to remove:”) print(cols_to_remove_na)</p>
+<h1 id="identify-columns-with-near-zero-variance-nzv">Identify columns
+with near-zero variance (NZV)</h1>
+<h1
+id="this-identifies-predictors-that-have-very-few-unique-values-or-are-constant.">This
+identifies predictors that have very few unique values or are
+constant.</h1>
+<p>nzv_cols &lt;- nearZeroVar(training, saveMetrics = TRUE)
+cols_to_remove_nzv &lt;- rownames(nzv_cols[nzv_cols$nzv, ]) cat(“with
+Near-Zero Variance to remove:”) print(cols_to_remove_nzv)</p>
+<h1 id="identify-irrelevant-columns-e.g.-id-columns-timestamps">Identify
+irrelevant columns (e.g., ID columns, timestamps)</h1>
+<h1 id="x1-is-an-id-column.-user_name-is-an-identifier.">‘X1’ is an ID
+column. ‘user_name’ is an identifier.</h1>
+<h1
+id="raw_timestamp_occured-raw_timestamp_live-new_window-num_window">‘raw_timestamp_occured’,
+‘raw_timestamp_live’, ‘new_window’, ‘num_window’</h1>
+<h1 id="are-metadata-not-directly-related-to-exercise-quality.">are
+metadata not directly related to exercise quality.</h1>
+<p>irrelevant_cols &lt;- c(“X1”, “user_name”, “raw_timestamp_occured”,
+“raw_timestamp_live”, “new_window”, “num_window”) cat(“columns to
+remove:”) print(irrelevant_cols)</p>
+<h1
+id="combine-all-columns-to-remove-ensuring-classe-is-not-accidentally-included">Combine
+all columns to remove, ensuring ‘classe’ is not accidentally
+included</h1>
+<p>all_cols_to_remove &lt;- unique(c(cols_to_remove_na,
+cols_to_remove_nzv, irrelevant_cols)) all_cols_to_remove &lt;-
+all_cols_to_remove[all_cols_to_remove != “classe”] # Just in case</p>
+<h1
+id="remove-identified-columns-from-both-training-and-testing-sets">Remove
+identified columns from both training and testing sets</h1>
+<p>training_processed &lt;- training %&gt;%
+select(-one_of(all_cols_to_remove)) testing_processed &lt;- testing
+%&gt;% select(-one_of(all_cols_to_remove))</p>
+<p>cat(“of Training Data after preprocessing:”, dim(training_processed),
+“”) cat(“Dimensions of Testing Data after preprocessing:”,
+dim(testing_processed), “”)</p>
+<h1 id="data-type-conversion">— 3.2 Data Type Conversion —</h1>
+<h1
+id="ensure-classe-is-a-factor-in-the-training-set-it-usually-is-if-read_csv-infers-correctly">Ensure
+‘classe’ is a factor in the training set (it usually is if read_csv
+infers correctly)</h1>
+<p>training_processed<span
+class="math inline"><em>c</em><em>l</em><em>a</em><em>s</em><em>s</em><em>e</em> &lt;  − <em>f</em><em>a</em><em>c</em><em>t</em><em>o</em><em>r</em>(<em>t</em><em>r</em><em>a</em><em>i</em><em>n</em><em>i</em><em>n</em><em>g</em><sub><em>p</em></sub><em>r</em><em>o</em><em>c</em><em>e</em><em>s</em><em>s</em><em>e</em><em>d</em></span>classe)</p>
+<h1 id="verify-that-all-remaining-predictor-columns-are-numeric.">Verify
+that all remaining predictor columns are numeric.</h1>
+<h1
+id="if-any-character-columns-remain-that-should-be-numeric-convert-them.">If
+any character columns remain that should be numeric, convert them.</h1>
+<h1
+id="for-this-specific-dataset-after-the-above-steps-most-should-be-numeric.">For
+this specific dataset after the above steps, most should be
+numeric.</h1>
+<h1 id="if-not-you-might-add">If not, you might add:</h1>
+<h1
+id="training_processed---training_processed-mutate_ifis.character-as.numeric">training_processed
+&lt;- training_processed %&gt;% mutate_if(is.character, as.numeric)</h1>
+<h1
+id="testing_processed---testing_processed-mutate_ifis.character-as.numeric">testing_processed
+&lt;- testing_processed %&gt;% mutate_if(is.character, as.numeric)</h1>
+<h1
+id="feature-scaling-optional-for-tree-based-models-but-good-for-consistency">—
+3.3 Feature Scaling (Optional for tree-based models, but good for
+consistency) —</h1>
+<h1
+id="for-tree-based-models-like-random-forest-explicit-scaling-is-not-strictly-necessary">For
+tree-based models like Random Forest, explicit scaling is not strictly
+necessary</h1>
+<h1
+id="as-they-are-invariant-to-monotonic-transformations-of-features.">as
+they are invariant to monotonic transformations of features.</h1>
+<h1
+id="however-if-you-were-to-use-models-sensitive-to-scale-e.g.-svm-knn-glmnet">However,
+if you were to use models sensitive to scale (e.g., SVM, KNN,
+GLMNET),</h1>
+<h1
+id="you-would-include-preprocess-ccenter-scale-in-your-train-call.">you
+would include <code>preProcess = c("center", "scale")</code> in your
+<code>train</code> call.</h1>
+<p>Key Decisions in Preprocessing:</p>
+<p>We removed columns with a very high percentage of missing values, as
+they provide little information.</p>
+<p>Near-zero variance predictors were removed because they offer minimal
+discriminative power.</p>
+<p>Irrelevant metadata and ID columns were also excluded to prevent data
+leakage and improve model focus.</p>
+<p>The classe variable was explicitly ensured to be a factor for
+classification.</p>
+<ol start="4" type="1">
+<li>Model Building Strategy For this multiclass classification problem,
+we will employ a Random Forest model. Random Forests are ensemble
+methods known for their high accuracy, robustness to overfitting, and
+ability to handle a large number of predictors without extensive feature
+scaling.</li>
+</ol>
+<p>We will use 10-fold cross-validation to estimate the model’s
+performance and tune hyperparameters robustly.</p>
+<h1 id="cross-validation-setup">— 4.1 Cross-Validation Setup —</h1>
+<p>fitControl &lt;- trainControl( method = “cv”, number = 10, # 10-fold
+cross-validation verboseIter = TRUE, # Show progress during training
+classProbs = TRUE, # Needed for some metrics if using multiClassSummary,
+or for probability predictions summaryFunction = defaultSummary #
+Provides Accuracy and Kappa for classification )</p>
+<h1 id="training-a-random-forest-model">— 4.2 Training a Random Forest
+model —</h1>
+<p>set.seed(12345) # Set a seed for reproducibility of model training
+and CV folds</p>
+<h1 id="train-the-random-forest-model">Train the Random Forest
+model</h1>
+<h1
+id="we-will-let-carets-train-function-tune-the-mtry-parameter-number-of-variables-randomly-sampled-at-each-split">We
+will let caret’s train function tune the ‘mtry’ parameter (number of
+variables randomly sampled at each split)</h1>
+<h1
+id="using-its-default-grid-which-is-often-sufficient-for-a-good-starting-point.">using
+its default grid, which is often sufficient for a good starting
+point.</h1>
+<p>model_rf &lt;- train( classe ~ ., # Predict ‘classe’ using all other
+processed variables data = training_processed, method = “rf”, trControl
+= fitControl )</p>
+<h1
+id="you-could-also-explicitly-define-a-tunegrid-for-mtry-if-you-want-more-control">You
+could also explicitly define a tuneGrid for ‘mtry’ if you want more
+control:</h1>
+<h1
+id="tunegrid_rf---expand.gridmtry-c2-5-10-20-30-example-values">tuneGrid_rf
+&lt;- expand.grid(mtry = c(2, 5, 10, 20, 30)) # Example values</h1>
+<h1 id="model_rf_tuned---train">model_rf_tuned &lt;- train(</h1>
+<h1 id="classe-.">classe ~ .,</h1>
+<h1 id="data-training_processed">data = training_processed,</h1>
+<h1 id="method-rf">method = “rf”,</h1>
+<h1 id="trcontrol-fitcontrol">trControl = fitControl,</h1>
+<h1 id="tunegrid-tunegrid_rf">tuneGrid = tuneGrid_rf</h1>
+<h1 id="section">)</h1>
+<p>Key Choices and Justifications:</p>
+<p>Model Selection (Random Forest): Random Forests are powerful ensemble
+methods that combine multiple decision trees. They are generally robust
+to noisy data, handle high-dimensional feature spaces well, and provide
+good predictive accuracy without requiring extensive feature scaling.
+They also provide an internal estimate of variable importance.</p>
+<p>Cross-Validation (10-fold CV): 10-fold cross-validation is a widely
+accepted standard that provides a good balance between bias and variance
+in the estimate of out-of-sample error. It ensures that each fold serves
+as a test set exactly once, and each observation is used for training
+multiple times.</p>
+<p>Hyperparameter Tuning (mtry): The mtry parameter in Random Forest
+controls the number of variables randomly sampled as candidates at each
+split. Tuning this parameter helps optimize the model’s performance.
+caret’s train function automatically searches a default grid for mtry
+unless tuneGrid is specified.</p>
+<ol start="5" type="1">
+<li>Model Evaluation After training the Random Forest model, we evaluate
+its performance using the cross-validation results. This gives us an
+estimate of the expected out-of-sample error.</li>
+</ol>
+<h1 id="evaluate-trained-model">— 5.1 Evaluate Trained Model —</h1>
+<h1
+id="print-the-model-object-to-see-cross-validation-results-and-best-tune">Print
+the model object to see cross-validation results and best tune</h1>
+<p>print(model_rf)</p>
+<h1 id="plot-accuracy-vs.-mtry-tuning-parameter">Plot accuracy vs. mtry
+(tuning parameter)</h1>
+<p>plot(model_rf)</p>
+<h1 id="extract-the-best-accuracy-from-cross-validation">Extract the
+best accuracy from cross-validation</h1>
+<p>cv_accuracy &lt;- max(model_rf<span
+class="math inline"><em>r</em><em>e</em><em>s</em><em>u</em><em>l</em><em>t</em><em>s</em></span>Accuracy)
+cat(“-validated Accuracy of Random Forest model:”, round(cv_accuracy,
+4), “”)</p>
+<h1 id="estimate-out-of-sample-error">Estimate out-of-sample error</h1>
+<p>expected_oob_error &lt;- 1 - cv_accuracy cat(“Estimated Out-of-Sample
+Error:”, round(expected_oob_error, 4), “”)</p>
+<p>Discussion Points for Report:</p>
+<p>Performance Metrics: We used Accuracy and Kappa (from defaultSummary)
+to evaluate the model. Accuracy measures the proportion of correctly
+classified instances, while Kappa accounts for agreement occurring by
+chance.</p>
+<p>Cross-Validation Results: The cross-validated accuracy for our Random
+Forest model is approximately r round(cv_accuracy, 4). This indicates
+that the model is expected to correctly classify about r
+round(cv_accuracy*100, 2)% of new, unseen exercise performances.</p>
+<p>Expected Out-of-Sample Error: Based on the cross-validation, the
+estimated out-of-sample error is r round(expected_oob_error, 4).</p>
+<p>Strengths: Random Forest performed well, showing high accuracy and
+robustness. Its ensemble nature helps in achieving stable
+predictions.</p>
+<ol start="6" type="1">
+<li>Prediction for Quiz Submission Finally, we apply our trained Random
+Forest model to the provided 20 test cases and prepare the predictions
+in the required format for the automated grading quiz.</li>
+</ol>
+<h1
+id="ensure-the-testing_processed-data-has-all-the-same-columns-as-training_processed">Ensure
+the testing_processed data has all the same columns as
+training_processed,</h1>
+<h1 id="except-for-classe-and-the-problem_id-column.">except for
+‘classe’ and the ‘problem_id’ column.</h1>
+<h1 id="the-problem_id-column-is-in-the-original-testing-dataframe.">The
+‘problem_id’ column is in the original ‘testing’ dataframe.</h1>
+<h1
+id="we-need-to-make-sure-the-prediction-input-matches-the-training-features.">We
+need to make sure the prediction input matches the training
+features.</h1>
+<h1
+id="identify-the-columns-that-were-used-for-training-excluding-classe">Identify
+the columns that were used for training (excluding ‘classe’)</h1>
+<p>training_features &lt;-
+names(training_processed)[names(training_processed) != “classe”]</p>
+<h1
+id="filter-the-test-data-to-only-include-these-features-and-remove-problem_id-if-its-still-there">Filter
+the test data to only include these features, and remove ‘problem_id’ if
+it’s still there</h1>
+<h1 id="the-testing-dataframe-original-contains-problem_id.">The
+‘testing’ dataframe (original) contains ‘problem_id’.</h1>
+<p>testing_final_for_prediction &lt;- testing %&gt;%
+select(one_of(training_features))</p>
+<h1
+id="generate-predictions-for-the-20-test-cases-using-the-best-model">Generate
+predictions for the 20 test cases using the best model</h1>
+<p>final_quiz_predictions &lt;- predict(model_rf, newdata =
+testing_final_for_prediction)</p>
+<h1 id="display-the-predictions">Display the predictions</h1>
+<p>cat(“Predictions for the 20 test cases:”)
+print(final_quiz_predictions)</p>
+<h1
+id="create-a-function-to-generate-the-submission-files-as-per-typical-course-project-format">Create
+a function to generate the submission files (as per typical course
+project format)</h1>
+<h1
+id="this-function-will-create-20-separate-.txt-files-in-your-working-directory.">This
+function will create 20 separate .txt files in your working
+directory.</h1>
+<p>pml_write_files &lt;- function(x){ n = length(x) for(i in 1:n){
+filename = paste0(“problem_id_”,i,“.txt”) writeLines(as.character(x[i]),
+filename) } }</p>
+<h1 id="call-the-function-to-create-the-submission-files">Call the
+function to create the submission files</h1>
+<h1
+id="uncomment-the-line-below-when-you-are-ready-to-generate-the-files-for-submission.">Uncomment
+the line below when you are ready to generate the files for
+submission.</h1>
+<p>pml_write_files(final_quiz_predictions)</p>
+<ol start="7" type="1">
+<li>Conclusion In this project, we successfully built a Random Forest
+model to predict the quality of weightlifting exercises. Through careful
+data preprocessing, including handling missing values and irrelevant
+features, and utilizing 10-fold cross-validation, we developed a robust
+model.</li>
+</ol>
+<script defer src="https://static.cloudflareinsights.com/beacon.min.js/vcd15cbe7772f49c399c6a5babf22c1241717689176015" integrity="sha512-ZpsOmlRQV6y907TI0dKBHq9Md29nnaEIPlkf84rnaERnq6zvWvPUqr2ft8M1aS28oN72PdrCzSjY4U6VaAw1EQ==" data-cf-beacon='{"version":"2024.11.0","token":"0357a45f23a943f08700f7f9af191ee6","r":1,"server_timing":{"name":{"cfCacheStatus":true,"cfEdge":true,"cfExtPri":true,"cfL4":true,"cfOrigin":true,"cfSpeedBrain":true},"location_startswith":null}}' crossorigin="anonymous"></script>
+</body>
+</html>
